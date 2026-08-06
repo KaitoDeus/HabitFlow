@@ -1,15 +1,15 @@
-﻿# [Android_UTH_11] - [PROJECT_NAME]
+﻿# [Android_UTH_11] - [HABIT_FLOW]
 
 ## Thành viên
 
 | STT | MSSV | Họ và tên | Vai trò |
 |---:|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
+| 1 | 080206012993 | Trần Thanh Nhân | |
+| 2 | 079205008952 | Võ Anh Khải | |
+| 3 | 080205001558 | Nguyễn Quốc Tuấn | |
+| 4 | 049205010456 | Nguyễn Hồng Công | |
+| 5 | 095305007534 | Nguyễn Thị Anh Thư | |
+| 6 | | Nguyễn Công Nhật Hưng | |
 
 ## Giới thiệu
 
