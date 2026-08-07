@@ -13,29 +13,19 @@ import java.time.ZonedDateTime
 
 object ReminderScheduler {
     fun schedule(context: Context, requestCode: Int, habitName: String, hour: Int, minute: Int) {
-        val alarmManager = context.getSystemService(AlarmManager::class.java)
-        val intent = Intent(context, ReminderReceiver::class.java).putExtra("habit_name", habitName)
-        val pendingIntent = PendingIntent.getBroadcast(context, requestCode, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val now = ZonedDateTime.now()
-        var next = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
-        if (!next.isAfter(now)) next = next.plusDays(1)
-        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toInstant().toEpochMilli(), pendingIntent)
+        com.habitflow.app.core.reminder.AndroidReminderScheduler(context).schedule(requestCode, habitName, hour, minute)
+    }
+
+    fun cancel(context: Context, requestCode: Int) {
+        com.habitflow.app.core.reminder.AndroidReminderScheduler(context).cancel(requestCode)
     }
 }
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val habitName = intent.getStringExtra("habit_name") ?: "thực hiện thói quen"
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(NotificationChannel("habit_reminders", "Nhắc thói quen", NotificationManager.IMPORTANCE_HIGH))
-        }
-        val notification = NotificationCompat.Builder(context, "habit_reminders")
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("HabitFlow")
-            .setContentText("Đã đến lúc: ${intent.getStringExtra("habit_name") ?: "thực hiện thói quen"}")
-            .setAutoCancel(true)
-            .build()
+        val notification = com.habitflow.app.core.reminder.NotificationFactory.createReminderNotification(context, habitName)
         manager.notify(System.currentTimeMillis().toInt(), notification)
     }
 }
