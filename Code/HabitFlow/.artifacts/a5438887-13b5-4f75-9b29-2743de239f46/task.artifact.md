@@ -1,0 +1,3 @@
+- [x] Optimize `StatisticsScreen` in `MainActivity.kt` (Pre-calculate maps)
+- [x] Refactor `TodayScreen` to avoid redundant filtering
+- [x] Verify build and scroll performance
