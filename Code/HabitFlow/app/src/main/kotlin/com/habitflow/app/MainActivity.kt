@@ -607,7 +607,7 @@ fun SectionTitle(title: String, subtitle: String? = null) {
         subtitle?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
-
+/*
 @Composable
 fun GoalsScreen(vm: MainViewModel) {
     val goals by vm.goals.collectAsStateWithLifecycle()
@@ -791,6 +791,8 @@ fun GoalsScreen(vm: MainViewModel) {
     }
 }
 
+
+ */
 @Composable
 private fun StatisticsScreen(vm: MainViewModel) {
     val stats by vm.stats.collectAsStateWithLifecycle()

@@ -135,8 +135,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.unmark(id, dateEpochDay)
         updateWidget()
     }
-    fun addGoal(name: String, target: Double, type: GoalMetricType, periodType: GoalPeriodType, linkedHabitId: String?, contributionValue: Double) = viewModelScope.launch { 
-        repository.addGoal(name, target, type, periodType, linkedHabitId, contributionValue) 
+    fun addGoal(
+        name: String,
+        target: Double,
+        type: GoalMetricType,
+        periodType: GoalPeriodType = GoalPeriodType.CUSTOM,
+        unit: String = "lần",
+        startEpochDay: Long = LocalDate.now().toEpochDay(),
+        endEpochDay: Long? = null,
+        linkedHabitId: String? = null,
+        contributionValue: Double = 1.0
+    ) = viewModelScope.launch {
+        repository.addGoal(name, target, type, periodType, unit, startEpochDay, endEpochDay, linkedHabitId, contributionValue)
+    }
+
+    fun deleteGoal(id: String) = viewModelScope.launch {
+        repository.deleteGoal(id)
+        updateWidget()
     }
     fun addGoalProgress(goal: GoalEntity, value: Double) = viewModelScope.launch { repository.addGoalProgress(goal, value) }
     suspend fun exportJson(): String = repository.exportJson()

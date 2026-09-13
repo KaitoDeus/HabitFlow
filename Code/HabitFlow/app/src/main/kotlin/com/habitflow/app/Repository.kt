@@ -49,12 +49,14 @@ class HabitRepository(private val db: HabitFlowDatabase) {
 
     suspend fun getUserStats(): UserStatsEntity = db.userStatsDao().get() ?: UserStatsEntity().also { db.userStatsDao().upsert(it) }
     suspend fun updateUserStats(stats: UserStatsEntity) = db.userStatsDao().upsert(stats)
-
     suspend fun addGoal(
         name: String,
         target: Double,
         type: GoalMetricType,
         periodType: GoalPeriodType = GoalPeriodType.WEEKLY,
+        unit: String = "lần",
+        startEpochDay: Long = LocalDate.now().toEpochDay(),
+        endEpochDay: Long? = null,
         linkedHabitId: String? = null,
         contributionValue: Double = 1.0
     ) {
@@ -67,14 +69,16 @@ class HabitRepository(private val db: HabitFlowDatabase) {
                 periodType = periodType,
                 targetValue = target,
                 currentValue = 0.0,
-                unit = if (type == GoalMetricType.OCCURRENCE_COUNT) "lần" else "đơn vị",
-                startEpochDay = LocalDate.now().toEpochDay(),
+                unit = unit,
+                startEpochDay = startEpochDay,
+                endEpochDay = endEpochDay,
+                archived = false,
                 linkedHabitId = linkedHabitId,
                 contributionValue = contributionValue
             )
         )
     }
-
+    suspend fun deleteGoal(id: String) = db.goalDao().delete(id)
     suspend fun addGoalProgress(goal: GoalEntity, value: Double) {
         db.goalDao().upsert(goal.copy(currentValue = (goal.currentValue + value).coerceIn(0.0, goal.targetValue)))
     }
