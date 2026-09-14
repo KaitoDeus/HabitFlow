@@ -1,4 +1,8 @@
 package com.habitflow.app
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.habitflow.app.feature.statistics.StatisticsViewModel
+import com.habitflow.app.feature.statistics.StatisticsViewModelFactory
+import com.habitflow.app.feature.statistics.StatisticsScreen
 
 import android.Manifest
 import android.os.Build
@@ -220,7 +224,6 @@ fun HabitFlowApp(viewModel: MainViewModel) {
         }
     }
 }
-
 data class NavItem(val icon: String, val label: String)
 
 @Composable
@@ -600,6 +603,8 @@ private fun TimePill(time: String) {
     }
 }
 
+
+
 @Composable
 fun SectionTitle(title: String, subtitle: String? = null) {
     Column(Modifier.padding(top = 10.dp, bottom = 4.dp)) {
@@ -607,6 +612,7 @@ fun SectionTitle(title: String, subtitle: String? = null) {
         subtitle?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
+
 @Composable
 private fun StatisticsScreen(vm: MainViewModel) {
     val stats by vm.stats.collectAsStateWithLifecycle()
