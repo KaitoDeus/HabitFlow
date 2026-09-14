@@ -40,6 +40,9 @@ interface GoalDao {
     @Upsert suspend fun upsert(item: GoalEntity)
     @Upsert suspend fun upsertAll(items: List<GoalEntity>)
     @Query("DELETE FROM goals") suspend fun clear()
+
+    @Query("DELETE FROM goals WHERE id = :id") suspend fun delete(id: String)
+
 }
 
 @Dao
@@ -66,7 +69,7 @@ interface UserStatsDao {
 
 @Database(
     entities = [HabitEntity::class, OccurrenceEntity::class, GoalEntity::class, ReminderEntity::class, UserStatsEntity::class],
-    version = 5,
+    version = 7,
     exportSchema = false,
 )
 abstract class HabitFlowDatabase : RoomDatabase() {

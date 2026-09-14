@@ -65,6 +65,26 @@ object GamificationManager {
             lastAwardedStreakFreezeEpochDay = if (newStreakFreezes > stats.streakFreezes) todayEpochDay else stats.lastAwardedStreakFreezeEpochDay
         ))
     }
+
+    suspend fun processReset(
+        repository: HabitRepository,
+        currentStreak: Int,
+        todayEpochDay: Long
+    ) {
+        val stats = repository.getUserStats()
+        
+        // Calculate exact XP that was awarded: Base 10 + Streak * 1.5
+        val streakBonus = (currentStreak * 1.5).toLong()
+        val totalXpReward = XP_PER_COMPLETION + streakBonus
+        
+        val newXp = (stats.xp - totalXpReward).coerceAtLeast(0L)
+        val newLevel = calculateLevel(newXp)
+        
+        repository.updateUserStats(stats.copy(
+            xp = newXp,
+            level = newLevel
+        ))
+    }
     
     suspend fun useStreakFreeze(repository: HabitRepository): Boolean {
         val stats = repository.getUserStats()
