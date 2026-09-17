@@ -16,6 +16,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.UUID
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 const val ACTION_COMPLETE_HABIT = "com.habitflow.app.ACTION_COMPLETE_HABIT"
 const val ACTION_SNOOZE_HABIT = "com.habitflow.app.ACTION_SNOOZE_HABIT"
@@ -392,4 +418,95 @@ class TimeChangeReceiver : BroadcastReceiver() {
             }
         }
     }
+}
+
+// 7. COMPOSABLE DIALOG: THÊM / SỬA NHẮC NHỞ
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReminderEditorDialog(
+    habitId: String,
+    habitName: String,
+    existingReminder: ReminderEntity? = null,
+    onDismiss: () -> Unit,
+    onSave: (ReminderEntity) -> Unit,
+    onDelete: ((String) -> Unit)? = null
+) {
+    val hour by remember { mutableIntStateOf(existingReminder?.hour ?: 8) }
+    val minute by remember { mutableIntStateOf(existingReminder?.minute ?: 0) }
+    var isEnabled by remember { mutableStateOf(existingReminder?.enabled ?: true) }
+
+    val timePickerState = rememberTimePickerState(
+        initialHour = hour,
+        initialMinute = minute,
+        is24Hour = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (existingReminder == null) "Thêm nhắc nhở cho: $habitName" else "Sửa nhắc nhở: $habitName",
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                TimeInput(state = timePickerState)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Kích hoạt nhắc nhở", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = isEnabled,
+                        onCheckedChange = { isEnabled = it }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val reminder = ReminderEntity(
+                        id = existingReminder?.id ?: UUID.randomUUID().toString(),
+                        habitId = habitId,
+                        hour = timePickerState.hour,
+                        minute = timePickerState.minute,
+                        enabled = isEnabled,
+                        requestCode = existingReminder?.requestCode ?: (System.currentTimeMillis() % 100000).toInt()
+                    )
+                    onSave(reminder)
+                    onDismiss()
+                }
+            ) {
+                Text("Lưu nhắc nhở")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (existingReminder != null && onDelete != null) {
+                    TextButton(
+                        onClick = {
+                            onDelete(existingReminder.id)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Xóa")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Hủy")
+                }
+            }
+        }
+    )
 }
