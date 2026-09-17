@@ -13,10 +13,13 @@ import kotlinx.coroutines.flow.Flow
 interface HabitDao {
     @Query("SELECT * FROM habits WHERE archived = 0 ORDER BY createdAt DESC")
     fun observeActive(): Flow<List<HabitEntity>>
+    @Query("SELECT * FROM habits WHERE archived = 1 ORDER BY createdAt DESC")
+    fun observeArchived(): Flow<List<HabitEntity>>
     @Query("SELECT * FROM habits") suspend fun all(): List<HabitEntity>
     @Upsert suspend fun upsert(item: HabitEntity)
     @Upsert suspend fun upsertAll(items: List<HabitEntity>)
     @Query("UPDATE habits SET archived = 1 WHERE id = :id") suspend fun archive(id: String)
+    @Query("UPDATE habits SET archived = 0 WHERE id = :id") suspend fun unarchive(id: String)
     @Query("DELETE FROM habits WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM habits") suspend fun clear()
 }
