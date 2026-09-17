@@ -45,6 +45,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val habits = repository.habits.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val archivedHabits = repository.archivedHabits.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val goals = repository.goals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val occurrences = repository.occurrences.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val userStats = repository.userStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserStatsEntity())
@@ -72,7 +73,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateWidget()
     }
     fun archiveHabit(id: String) = viewModelScope.launch { 
+        val todayEpochDay = LocalDate.now().plusDays(_testDateOffset.value).toEpochDay()
+        val currentOccurrences = repository.getOccurrencesDirect()
+        val existing = currentOccurrences.find { it.habitId == id && it.scheduledEpochDay == todayEpochDay }
+        
+        if (existing?.status == OccurrenceStatus.COMPLETED) {
+            val habitStats = stats.value
+            GamificationManager.processReset(repository, habitStats.currentStreak, todayEpochDay)
+            
+            // Undo goal progress
+            goals.value.filter { it.linkedHabitId == id }.forEach { goal ->
+                repository.addGoalProgress(goal, -goal.contributionValue)
+            }
+            // Remove today's record so it's clean if unarchived later
+            repository.unmark(id, todayEpochDay)
+        }
+
         repository.archiveHabit(id)
+        updateWidget()
+    }
+    fun unarchiveHabit(id: String) = viewModelScope.launch { 
+        repository.unarchiveHabit(id)
         updateWidget()
     }
     fun deleteHabit(id: String) = viewModelScope.launch {

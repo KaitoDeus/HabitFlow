@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun HabitsScreen(vm: MainViewModel) {
     val habits by vm.habits.collectAsStateWithLifecycle()
+    val archivedHabits by vm.archivedHabits.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -192,6 +193,65 @@ fun HabitsScreen(vm: MainViewModel) {
                     onArchive = { vm.archiveHabit(habit.id) },
                     onDelete = { habitToDelete = habit }
                 )
+            }
+        }
+
+        if (archivedHabits.isNotEmpty()) {
+            item { 
+                Spacer(Modifier.height(12.dp))
+                SectionTitle("Đã lưu trữ", "${archivedHabits.size} thói quen") 
+            }
+            items(archivedHabits, key = { "archived_${it.id}" }) { habit ->
+                HabitArchivedCard(
+                    habit = habit,
+                    onRestore = { vm.unarchiveHabit(habit.id) },
+                    onDelete = { habitToDelete = habit }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HabitArchivedCard(
+    habit: HabitEntity,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+        )
+    ) {
+        Column(Modifier.padding(17.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("📁", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        habit.name, 
+                        style = MaterialTheme.typography.titleMedium, 
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onRestore) { Text("Khôi phục") }
+                TextButton(onClick = onDelete) { Text("Xóa", color = MaterialTheme.colorScheme.error) }
             }
         }
     }

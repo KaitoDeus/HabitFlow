@@ -10,6 +10,7 @@ import java.util.UUID
 
 class HabitRepository(private val db: HabitFlowDatabase) {
     val habits: Flow<List<HabitEntity>> = db.habitDao().observeActive()
+    val archivedHabits: Flow<List<HabitEntity>> = db.habitDao().observeArchived()
     val occurrences: Flow<List<OccurrenceEntity>> = db.occurrenceDao().observeAll()
     val goals: Flow<List<GoalEntity>> = db.goalDao().observeActive()
     val userStats: Flow<UserStatsEntity?> = db.userStatsDao().observe()
@@ -39,6 +40,7 @@ class HabitRepository(private val db: HabitFlowDatabase) {
         return habitId
     }
     suspend fun archiveHabit(id: String) = db.habitDao().archive(id)
+    suspend fun unarchiveHabit(id: String) = db.habitDao().unarchive(id)
     suspend fun deleteHabit(id: String) = db.habitDao().delete(id)
     suspend fun mark(habitId: String, status: OccurrenceStatus, value: Double? = null, dateEpochDay: Long = LocalDate.now().toEpochDay()) {
         db.occurrenceDao().upsert(OccurrenceEntity(habitId, dateEpochDay, status, value))
