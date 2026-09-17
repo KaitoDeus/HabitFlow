@@ -259,12 +259,8 @@ fun SettingsScreen(
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            viewModel.onNotificationToggled(true)
-            message = "Đã bật thông báo nhắc nhở"
-        } else {
-            message = "Ứng dụng chưa được cấp quyền gửi thông báo"
-        }
+        viewModel.onNotificationToggled(granted)
+        message = if (granted) "Đã cấp quyền thông báo thành công" else "Ứng dụng chưa được cấp quyền gửi thông báo"
     }
 
     if (showReminderDialog) {
@@ -519,9 +515,16 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Thông báo nhắc nhở")
+                    Text("Cấp quyền thông báo")
                     Switch(
-                        checked = prefs.isNotificationEnabled,
+                        checked = if (Build.VERSION.SDK_INT >= 33) {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) == PackageManager.PERMISSION_GRANTED && prefs.isNotificationEnabled
+                        } else {
+                            prefs.isNotificationEnabled
+                        },
                         onCheckedChange = { enabled ->
                             if (enabled && Build.VERSION.SDK_INT >= 33) {
                                 val hasPermission = ContextCompat.checkSelfPermission(

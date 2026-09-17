@@ -1,34 +1,58 @@
-# Tài liệu Tab: Cài đặt (Settings)
+# Tài liệu Tab: Cài đặt (Settings & Utilities)
 
-## 1. Tổng quan UI
-Màn hình này cho phép người dùng tùy chỉnh ứng dụng, quản lý dữ liệu cá nhân và thiết lập lời chào.
+Tài liệu mô tả chi tiết phân hệ Cài đặt, Cá nhân hóa giao diện, Sao lưu dữ liệu và Quản lý nhắc nhở (do Thành viên 6 phụ trách).
 
-### Các thành phần chính:
-- **Sao lưu/Khôi phục:** Các nút "Xuất JSON" và "Khôi phục JSON".
-- **Thông báo:** Nút xin quyền và Switch bật/tắt thông báo.
-- **Giao diện:** Switch "Chế độ sáng/tối". Mặc định là Dark Mode.
-- **Lời chào:** Ô nhập văn bản để thay đổi thông điệp chào mừng khi mở app.
+---
 
-## 2. Các hàm và Logic chính
+## 1. Tổng quan Giao diện (UI Overview)
+Màn hình Cài đặt (`SettingsScreen`) cung cấp trung tâm điều khiển cho người dùng tùy biến ứng dụng và bảo vệ dữ liệu:
+- **Sao lưu & Dữ liệu:**
+  - Lối tắt vào màn hình chuyên sâu `BackupRestoreScreen`.
+  - Nút thao tác nhanh: **Xuất JSON**, **Khôi phục**, **Chia sẻ sao lưu**, **Xuất báo cáo CSV**.
+  - Công tắc **Tự động sao lưu định kỳ (7 ngày)** chạy ngầm.
+- **Nhắc nhở thói quen:**
+  - Nút **Thử chuông** để kiểm tra thông báo và thao tác nhanh.
+  - Danh sách các lịch nhắc nhở đang hoạt động kèm nút **Chỉnh sửa** và **+ Thêm**.
+- **Hệ thống & Cá nhân hóa:**
+  - **Chế độ Sáng/Tối:** Bật/Tắt chế độ tối (Dark Mode).
+  - **Bảng màu chủ đạo (Accent Color):** Bộ chọn màu trực quan `ColorThemeSelector` (Xanh lá, Xanh biển, Tím, Cam ấm, Tự động - Material You).
+  - **Cấp quyền thông báo & Rung:** Công tắc cấp quyền thông báo, rung khi nhắc nhở, rung phản hồi xúc giác (Haptic). Tự động kích hoạt hộp thoại yêu cầu cấp quyền khi mở ứng dụng lần đầu.
+  - **Lời chào khi mở app:** Ô nhập thông điệp tùy chỉnh hiển thị dạng Toast khi khởi động.
 
-### Quản lý Giao diện (Theme)
-- **Mặc định:** `AppTheme.DARK`.
-- **Hàm gọi:** `viewModel.onThemeSelected(newTheme)`.
-- **Lưu trữ:** Lưu vào DataStore thông qua `PreferencesRepository`.
+---
 
-### Sao lưu và Khôi phục
-1. **Xuất JSON:**
-   - **Hàm:** `mainViewModel.exportJson()`.
-   - **Cơ chế:** Chuyển đổi toàn bộ Database (habits, occurrences, goals, reminders, userStats) thành một chuỗi JSON bằng thư viện `kotlinx.serialization`.
-2. **Khôi phục JSON:**
-   - **Hàm:** `mainViewModel.restoreJson(text)`.
-   - **Cơ chế:** Giải mã chuỗi JSON và ghi đè vào Database trong một Transaction (`db.withTransaction`). Toàn bộ dữ liệu cũ sẽ bị xóa trước khi nạp mới.
+## 2. Kiến trúc & Phân tách Module (Architecture)
 
-### Lời chào tùy chỉnh (Greeting Message)
-- **Mặc định:** "Ngày mới lại bắt đầu rồi".
-- **Hành động:** Khi người dùng thay đổi text, nút "Lưu" sẽ hiện ra. Nhấn "Lưu" gọi `viewModel.onGreetingChanged(tempGreeting)`.
-- **Hiển thị:** Tin nhắn này được hiển thị dưới dạng **Toast** trong `MainActivity` ngay khi dữ liệu cấu hình được tải thành công.
+Phân hệ được tách thành các file chuyên biệt theo nguyên tắc đơn nhiệm (Single Responsibility):
 
-## 3. Thành phần kỹ thuật
-- **`SettingsViewModel`:** Quản lý `uiState` dựa trên luồng dữ liệu từ `PreferencesRepository`.
-- **`ActivityResultContracts`:** Sử dụng `CreateDocument` và `OpenDocument` để tương tác với trình quản lý tệp của Android.
+| Tên File | Vai trò đảm nhiệm |
+| :--- | :--- |
+| [`UserPreferences.kt`](../Code/HabitFlow/app/src/main/kotlin/com/habitflow/app/UserPreferences.kt) | Quản lý tầng DataStore Preferences: `AppTheme`, `AppColorTheme`, `UserPreferences`, `UserPreferencesDataSource`. |
+| [`FeatureSettings.kt`](../Code/HabitFlow/app/src/main/kotlin/com/habitflow/app/FeatureSettings.kt) | `SettingsUiState`, `SettingsViewModel`, `ColorThemeSelector`, `ThemeToggleRow`, `SettingsScreen`. |
+| [`FeatureBackup.kt`](../Code/HabitFlow/app/src/main/kotlin/com/habitflow/app/FeatureBackup.kt) | `BackupManager` (JSON), `BackupSharer` (FileProvider), `ReportExporter` (CSV UTF-8 BOM) và `BackupRestoreScreen`. |
+| [`AutoBackupWorker.kt`](../Code/HabitFlow/app/src/main/kotlin/com/habitflow/app/AutoBackupWorker.kt) | `CoroutineWorker` tự động sao lưu dữ liệu mỗi 7 ngày qua `WorkManager` (giữ tối đa 5 bản gần nhất). |
+| [`Reminder.kt`](../Code/HabitFlow/app/src/main/kotlin/com/habitflow/app/Reminder.kt) | `ReminderScheduler`, `AlarmReceiver`, `NotificationActionReceiver` (Quick Actions) và `ReminderEditorDialog`. |
+
+---
+
+## 3. Các Logic Kỹ thuật Chính
+
+### 🎨 Tùy biến Bảng màu Chủ đề (Dynamic Theming)
+- **Enum:** `AppColorTheme { GREEN, BLUE, PURPLE, ORANGE, DYNAMIC }`.
+- **Material You (Android 12+):** Khi chọn `DYNAMIC`, ứng dụng dùng `dynamicDarkColorScheme()` / `dynamicLightColorScheme()` để tự động hòa sắc theo hình nền máy.
+- **Áp dụng toàn cục:** `MainActivity` quan sát `userPreferences.colorTheme` để tái cấu trúc `MaterialTheme(colorScheme)` ngay lập tức.
+
+### 💾 Sao lưu, Chia sẻ & Xuất Báo Cáo
+1. **Chia sẻ nhanh qua Intent (`BackupSharer`):**
+   - Sử dụng `FileProvider` tạo Content URI an toàn (`content://.../backup_cache/...`).
+   - Gọi `Intent.ACTION_SEND` với cờ `FLAG_GRANT_READ_URI_PERMISSION`, cho phép gửi file sao lưu thẳng qua Zalo, Drive, Gmail mà không cần quyền nguy hiểm.
+2. **Xuất báo cáo CSV chuẩn Excel (`ReportExporter`):**
+   - Bổ sung **UTF-8 BOM** (`\uFEFF`) ở đầu chuỗi dữ liệu để Microsoft Excel (Windows/macOS) hiển thị tiếng Việt có dấu chuẩn 100%.
+3. **Tự động sao lưu định kỳ (`AutoBackupWorker`):**
+   - Đăng ký `PeriodicWorkRequestBuilder` chu kỳ 7 ngày với điều kiện `setRequiresBatteryNotLow(true)`.
+   - Cơ chế tự dọn dẹp: Quét thư mục `auto_backups/` và chỉ giữ lại 5 bản sao lưu gần nhất.
+
+### 🔔 Thông báo & Nút Thao Tác Nhanh (Notification Quick Actions)
+- `NotificationActionReceiver` xử lý 2 nút bấm ngay trên thông báo mà không cần mở ứng dụng:
+  - **`[✓ Hoàn thành]`**: Đánh dấu hoàn thành thói quen hôm nay trong Room DB, cộng XP, tăng Streak và hủy thông báo.
+  - **`[⏱ Hoãn 10 phút]`**: Lên lịch nhắc lại sau 10 phút qua `AlarmManager`.
