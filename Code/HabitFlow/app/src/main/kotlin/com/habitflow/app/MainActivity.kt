@@ -5,8 +5,10 @@ import com.habitflow.app.feature.statistics.StatisticsViewModelFactory
 import com.habitflow.app.feature.statistics.StatisticsScreen
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -72,6 +74,24 @@ fun HabitFlowApp(viewModel: MainViewModel) {
     val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     
     var hasShownGreeting by remember { mutableStateOf(false) }
+
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        settingsViewModel.onNotificationToggled(granted)
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            val isGranted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!isGranted) {
+                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     LaunchedEffect(settingsUiState) {
         if (!hasShownGreeting && settingsUiState is SettingsUiState.Success) {
