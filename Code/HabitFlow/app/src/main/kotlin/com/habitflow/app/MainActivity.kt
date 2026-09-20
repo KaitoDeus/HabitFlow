@@ -234,7 +234,7 @@ fun HabitFlowApp(viewModel: MainViewModel) {
                     0 -> TodayScreen(viewModel, isHapticEnabled = isHapticEnabled, onNavigateToHabits = { tab = 1 })
                     1 -> HabitsScreen(viewModel)
                     2 -> GoalsScreen(viewModel)
-                    3 -> StatisticsScreen(viewModel)
+                    3 -> StatisticsScreen(viewModel, onNavigateToToday = { tab = 0 })
                     else -> SettingsScreen(
                         viewModel = settingsViewModel,
                         mainViewModel = viewModel
@@ -634,13 +634,25 @@ fun SectionTitle(title: String, subtitle: String? = null) {
 }
 
 @Composable
-private fun StatisticsScreen(vm: MainViewModel) {
+private fun StatisticsScreen(vm: MainViewModel, onNavigateToToday: () -> Unit) {
     val stats by vm.stats.collectAsStateWithLifecycle()
     val habits by vm.habits.collectAsStateWithLifecycle()
     val occurrences by vm.occurrences.collectAsStateWithLifecycle()
     val testOffset by vm.testDateOffset.collectAsStateWithLifecycle()
     val today = remember(testOffset) { LocalDate.now().plusDays(testOffset) }
     var selectedYearMonth by remember { mutableStateOf(YearMonth.from(today)) }
+    
+    var selectedDateDetail by remember { mutableStateOf<LocalDate?>(null) }
+
+    if (selectedDateDetail != null) {
+        DayDetailDialog(
+            date = selectedDateDetail!!,
+            today = today,
+            habits = habits,
+            occurrences = occurrences,
+            onDismiss = { selectedDateDetail = null }
+        )
+    }
 
     val daysInMonth = selectedYearMonth.lengthOfMonth()
     val firstDayOfWeek = selectedYearMonth.atDay(1).dayOfWeek.value
@@ -715,10 +727,130 @@ private fun StatisticsScreen(vm: MainViewModel) {
                 habitsByDayOfWeek = habitsByDayOfWeek,
                 occurrencesByEpochDay = occurrencesByEpochDay,
                 onPrevious = { selectedYearMonth = selectedYearMonth.minusMonths(1) },
-                onNext = { selectedYearMonth = selectedYearMonth.plusMonths(1) }
+                onNext = { selectedYearMonth = selectedYearMonth.plusMonths(1) },
+                onDateClick = { date ->
+                    if (date == today) {
+                        onNavigateToToday()
+                    } else {
+                        selectedDateDetail = date
+                    }
+                }
             )
         }
     }
+}
+
+@Composable
+private fun DayDetailDialog(
+    date: LocalDate,
+    today: LocalDate,
+    habits: List<HabitEntity>,
+    occurrences: List<OccurrenceEntity>,
+    onDismiss: () -> Unit
+) {
+    val epochDay = date.toEpochDay()
+    val dayOfWeek = date.dayOfWeek.value
+    val scheduledHabits = habits.filter { habit ->
+        val isScheduled = habit.scheduledDays.isEmpty() || habit.scheduledDays.split(",").contains(dayOfWeek.toString())
+        val isCreated = (habit.createdAt / 86400000L) <= epochDay
+        isScheduled && isCreated
+    }
+    val dayOccurrences = occurrences.filter { it.scheduledEpochDay == epochDay }.associateBy { it.habitId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Text(
+                text = date.format(DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy", Locale("vi"))).replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold
+            )
+        },
+        text = {
+            if (scheduledHabits.isEmpty()) {
+                Text(
+                    text = "Không có thói quen nào được lên lịch cho ngày này.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(scheduledHabits) { habit ->
+                        val occurrence = dayOccurrences[habit.id]
+                        val isFuture = epochDay > today.toEpochDay()
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(36.dp),
+                                    shape = CircleShape,
+                                    color = when (occurrence?.status) {
+                                        OccurrenceStatus.COMPLETED -> MaterialTheme.colorScheme.primaryContainer
+                                        OccurrenceStatus.SKIPPED -> MaterialTheme.colorScheme.tertiaryContainer
+                                        OccurrenceStatus.FROZEN -> MaterialTheme.colorScheme.primaryContainer
+                                        OccurrenceStatus.MISSED -> MaterialTheme.colorScheme.errorContainer
+                                        else -> if (isFuture) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = when (occurrence?.status) {
+                                                OccurrenceStatus.COMPLETED -> "✓"
+                                                OccurrenceStatus.SKIPPED -> "↷"
+                                                OccurrenceStatus.FROZEN -> "❄"
+                                                OccurrenceStatus.MISSED -> "×"
+                                                else -> if (isFuture) "⌛" else "○"
+                                            },
+                                            color = when (occurrence?.status) {
+                                                OccurrenceStatus.COMPLETED -> MaterialTheme.colorScheme.primary
+                                                OccurrenceStatus.SKIPPED -> MaterialTheme.colorScheme.tertiary
+                                                OccurrenceStatus.FROZEN -> MaterialTheme.colorScheme.primary
+                                                OccurrenceStatus.MISSED -> MaterialTheme.colorScheme.error
+                                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(habit.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                    val statusText = when (occurrence?.status) {
+                                        OccurrenceStatus.COMPLETED -> "Đã hoàn thành"
+                                        OccurrenceStatus.SKIPPED -> "Đã bỏ qua"
+                                        OccurrenceStatus.FROZEN -> "Đã đóng băng"
+                                        OccurrenceStatus.MISSED -> "Bỏ lỡ"
+                                        else -> if (isFuture) "Sắp tới" else "Chưa ghi nhận"
+                                    }
+                                    Text(
+                                        text = statusText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Đóng") }
+        }
+    )
 }
 
 @Composable
@@ -746,7 +878,8 @@ private fun CalendarCard(
     habitsByDayOfWeek: Map<Int, List<HabitEntity>>,
     occurrencesByEpochDay: Map<Long, List<OccurrenceEntity>>,
     onPrevious: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onDateClick: (LocalDate) -> Unit
 ) {
     val days = remember(selectedYearMonth, firstDayOfWeek, daysInMonth) {
         buildList<LocalDate?> {
@@ -789,7 +922,8 @@ private fun CalendarCard(
                             today = today,
                             habitsByDayOfWeek = habitsByDayOfWeek,
                             occurrencesByEpochDay = occurrencesByEpochDay,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            onClick = onDateClick
                         )
                     }
                     repeat(7 - week.size) { Spacer(Modifier.weight(1f).aspectRatio(1f)) }
@@ -811,7 +945,8 @@ private fun CalendarDayCell(
     today: LocalDate,
     habitsByDayOfWeek: Map<Int, List<HabitEntity>>,
     occurrencesByEpochDay: Map<Long, List<OccurrenceEntity>>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (LocalDate) -> Unit
 ) {
     Box(modifier = modifier.aspectRatio(1f).padding(2.dp), contentAlignment = Alignment.Center) {
         if (date != null) {
@@ -831,13 +966,51 @@ private fun CalendarDayCell(
                 else -> MaterialTheme.colorScheme.errorContainer
             }
             Surface(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().clickable { onClick(date) },
                 shape = RoundedCornerShape(10.dp),
                 color = color,
                 border = if (date == today) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.labelMedium, fontWeight = if (date == today) FontWeight.Bold else FontWeight.Normal)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = date.dayOfMonth.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (date == today) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.offset(y = (-2).dp)
+                    )
+                    if (total > 0) {
+                        if (total > 6) {
+                            Text(
+                                text = "—",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = LocalContentColor.current.copy(alpha = 0.6f)
+                            )
+                        } else {
+                            val rows = if (total > 3) 2 else 1
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.offset(y = (-1).dp)
+                            ) {
+                                repeat(rows) { rowIndex ->
+                                    val dotsInRow = if (rows == 1) total else if (rowIndex == 0) 3 else total - 3
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        repeat(dotsInRow) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(4.dp)
+                                                    .background(LocalContentColor.current.copy(alpha = 0.6f), CircleShape)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
