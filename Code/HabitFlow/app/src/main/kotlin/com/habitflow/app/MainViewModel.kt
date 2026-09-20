@@ -45,9 +45,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val habits = repository.habits.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val archivedHabits = repository.archivedHabits
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    fun unarchiveHabit(id: String) = viewModelScope.launch {
+        repository.unarchiveHabit(id)
+        updateWidget()
+    }
     val goals = repository.goals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val occurrences = repository.occurrences.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val userStats = repository.userStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserStatsEntity())
+    val userStats = repository.userStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val stats = combine(repository.occurrences, repository.habits, testDateOffset) { occurrences, habits, offset ->
         val todayEpochDay = LocalDate.now().plusDays(offset).toEpochDay()

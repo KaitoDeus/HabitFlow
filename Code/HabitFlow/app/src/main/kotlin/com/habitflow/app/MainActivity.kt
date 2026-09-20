@@ -252,7 +252,11 @@ fun HabitFlowApp(viewModel: MainViewModel) {
                     )
                     1 -> HabitsScreen(viewModel)
                     2 -> GoalsScreen(viewModel)
-                    3 -> StatisticsScreen(viewModel, onNavigateToToday = { tab = 0 })
+                    3 -> StatisticsScreen(viewModel, onNavigateToToday = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(0)
+                        }
+                    })
                     else -> SettingsScreen(
                         viewModel = settingsViewModel,
                         mainViewModel = viewModel
