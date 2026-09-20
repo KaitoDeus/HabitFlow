@@ -176,7 +176,6 @@ fun HabitFlowApp(viewModel: MainViewModel) {
     }
 
     MaterialTheme(colorScheme = colorScheme) {
-        var tab by rememberSaveable { mutableIntStateOf(0) }
         val navItems = listOf(
             NavItem("✓", "Hôm nay"),
             NavItem("◎", "Thói quen"),
@@ -184,7 +183,12 @@ fun HabitFlowApp(viewModel: MainViewModel) {
             NavItem("▥", "Thống kê"),
             NavItem("⚙", "Cài đặt")
         )
-
+        // Quản lý Pager State cho vuốt ngang
+        val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+            initialPage = 0,
+            pageCount = { navItems.size }
+        )
+        val coroutineScope = rememberCoroutineScope()
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
@@ -201,8 +205,12 @@ fun HabitFlowApp(viewModel: MainViewModel) {
                     ) {
                         navItems.forEachIndexed { index, item ->
                             NavigationBarItem(
-                                selected = tab == index,
-                                onClick = { tab = index },
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
+                                },
                                 icon = {
                                     Text(
                                         item.icon,
@@ -224,14 +232,24 @@ fun HabitFlowApp(viewModel: MainViewModel) {
                 }
             }
         ) { innerPadding ->
-            Box(
-                Modifier
+            val isHapticEnabled = (settingsUiState as? SettingsUiState.Success)?.userPreferences?.isHapticEnabled ?: true
+
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-            ) {
-                val isHapticEnabled = (settingsUiState as? SettingsUiState.Success)?.userPreferences?.isHapticEnabled ?: true
-                when (tab) {
-                    0 -> TodayScreen(viewModel, isHapticEnabled = isHapticEnabled, onNavigateToHabits = { tab = 1 })
+            ) { page ->
+                when (page) {
+                    0 -> TodayScreen(
+                        vm = viewModel,
+                        isHapticEnabled = isHapticEnabled,
+                        onNavigateToHabits = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
+                        }
+                    )
                     1 -> HabitsScreen(viewModel)
                     2 -> GoalsScreen(viewModel)
                     3 -> StatisticsScreen(viewModel, onNavigateToToday = { tab = 0 })

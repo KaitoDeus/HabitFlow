@@ -32,10 +32,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun updateWidget() {
         // Wait a small buffer time for the Room database transaction to fully flush to disk
         delay(150)
-        
+
         // 1. Trigger Glance update engine
         HabitWidget().updateAll(getApplication())
-        
+
         // 2. Explicitly notify the system via generic package broadcast to refresh app widget provider states
         val context = getApplication<Application>().applicationContext
         val intent = Intent("android.appwidget.action.APPWIDGET_UPDATE").apply {
@@ -45,7 +45,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val habits = repository.habits.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val archivedHabits = repository.archivedHabits.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val goals = repository.goals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val occurrences = repository.occurrences.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val userStats = repository.userStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserStatsEntity())
@@ -72,28 +71,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         updateWidget()
     }
-    fun archiveHabit(id: String) = viewModelScope.launch { 
-        val todayEpochDay = LocalDate.now().plusDays(_testDateOffset.value).toEpochDay()
-        val currentOccurrences = repository.getOccurrencesDirect()
-        val existing = currentOccurrences.find { it.habitId == id && it.scheduledEpochDay == todayEpochDay }
-        
-        if (existing?.status == OccurrenceStatus.COMPLETED) {
-            val habitStats = stats.value
-            GamificationManager.processReset(repository, habitStats.currentStreak, todayEpochDay)
-            
-            // Undo goal progress
-            goals.value.filter { it.linkedHabitId == id }.forEach { goal ->
-                repository.addGoalProgress(goal, -goal.contributionValue)
-            }
-            // Remove today's record so it's clean if unarchived later
-            repository.unmark(id, todayEpochDay)
-        }
-
+    fun archiveHabit(id: String) = viewModelScope.launch {
         repository.archiveHabit(id)
-        updateWidget()
-    }
-    fun unarchiveHabit(id: String) = viewModelScope.launch { 
-        repository.unarchiveHabit(id)
         updateWidget()
     }
     fun deleteHabit(id: String) = viewModelScope.launch {
@@ -104,17 +83,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.deleteHabit(id)
         updateWidget()
     }
-    
-    fun mark(id: String, status: OccurrenceStatus) = viewModelScope.launch { 
+
+    fun mark(id: String, status: OccurrenceStatus) = viewModelScope.launch {
         val todayEpochDay = LocalDate.now().plusDays(_testDateOffset.value).toEpochDay()
         repository.mark(id, status, dateEpochDay = todayEpochDay)
         if (status == OccurrenceStatus.COMPLETED) {
             val habitStats = stats.value
             GamificationManager.processCompletion(repository, habitStats.currentStreak, todayEpochDay)
-            
+
             // Auto-progress linked goals
             goals.value.filter { it.linkedHabitId == id }.forEach { goal ->
-                repository.addGoalProgress(goal, goal.contributionValue)
+                repository.addGoalProgress(goal, goal.contributionValue, todayEpochDay)
             }
         }
         updateWidget()
@@ -141,16 +120,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateWidget()
     }
 
-    fun unmark(id: String, dateEpochDay: Long) = viewModelScope.launch { 
+    fun unmark(id: String, dateEpochDay: Long) = viewModelScope.launch {
         val currentOccurrences = repository.getOccurrencesDirect()
         val existing = currentOccurrences.find { it.habitId == id && it.scheduledEpochDay == dateEpochDay }
         if (existing?.status == OccurrenceStatus.COMPLETED) {
             val habitStats = stats.value
             GamificationManager.processReset(repository, habitStats.currentStreak, dateEpochDay)
-            
+
             // Undo goal progress
             goals.value.filter { it.linkedHabitId == id }.forEach { goal ->
-                repository.addGoalProgress(goal, -goal.contributionValue)
+                repository.addGoalProgress(goal, -goal.contributionValue, dateEpochDay)
             }
         }
         repository.unmark(id, dateEpochDay)
@@ -168,13 +147,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         contributionValue: Double = 1.0
     ) = viewModelScope.launch {
         repository.addGoal(name, target, type, periodType, unit, startEpochDay, endEpochDay, linkedHabitId, contributionValue)
+        updateWidget()
     }
-
     fun deleteGoal(id: String) = viewModelScope.launch {
         repository.deleteGoal(id)
         updateWidget()
     }
-    fun addGoalProgress(goal: GoalEntity, value: Double) = viewModelScope.launch { repository.addGoalProgress(goal, value) }
+    fun updateGoal(goal: GoalEntity) = viewModelScope.launch {
+        repository.updateGoal(goal)
+        updateWidget()
+    }
+    fun addGoalProgress(goal: GoalEntity, value: Double) = viewModelScope.launch {
+        val currentEpochDay = java.time.LocalDate.now()
+            .plusDays(testDateOffset.value)
+            .toEpochDay()
+
+        val success = repository.addGoalProgress(goal, value, currentEpochDay)
+        if (success) {
+            updateWidget()
+        }
+    }
+
     suspend fun exportJson(): String = repository.exportJson()
     suspend fun restoreJson(text: String) = repository.restoreJson(text)
 }

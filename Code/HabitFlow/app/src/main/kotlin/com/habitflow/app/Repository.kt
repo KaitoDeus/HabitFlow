@@ -80,11 +80,31 @@ class HabitRepository(private val db: HabitFlowDatabase) {
             )
         )
     }
-    suspend fun deleteGoal(id: String) = db.goalDao().delete(id)
-    suspend fun addGoalProgress(goal: GoalEntity, value: Double) {
-        db.goalDao().upsert(goal.copy(currentValue = (goal.currentValue + value).coerceIn(0.0, goal.targetValue)))
-    }
 
+    suspend fun updateGoal(goal: GoalEntity) {
+        db.goalDao().upsert(goal)
+    }
+    suspend fun deleteGoal(id: String) = db.goalDao().delete(id)
+    suspend fun addGoalProgress(
+        goal: GoalEntity,
+        value: Double,
+        currentEpochDay: Long = LocalDate.now().toEpochDay() // Thêm giá trị mặc định vào đây
+    ): Boolean {
+        if (value > 0 && goal.lastUpdatedEpochDay == currentEpochDay) {
+            return false
+        }
+
+        val updatedValue = (goal.currentValue + value).coerceIn(0.0, goal.targetValue)
+        val updatedLastDay = if (value > 0) currentEpochDay else null
+
+        db.goalDao().upsert(
+            goal.copy(
+                currentValue = updatedValue,
+                lastUpdatedEpochDay = updatedLastDay
+            )
+        )
+        return true
+    }
     suspend fun getActiveHabitsDirect(): List<HabitEntity> = db.habitDao().all().filter { !it.archived }
     suspend fun getOccurrencesDirect(): List<OccurrenceEntity> = db.occurrenceDao().all()
 

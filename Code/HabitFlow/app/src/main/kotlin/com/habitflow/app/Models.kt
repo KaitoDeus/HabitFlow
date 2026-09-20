@@ -69,7 +69,8 @@ data class GoalEntity(
     val endEpochDay: Long? = null,
     val archived: Boolean = false,
     val linkedHabitId: String? = null,
-    val contributionValue: Double = 1.0
+    val contributionValue: Double = 1.0,
+    val lastUpdatedEpochDay: Long? = null
 )
 
 @Serializable

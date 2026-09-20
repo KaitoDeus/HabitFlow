@@ -25,6 +25,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import java.time.LocalDate
 
+
 data class HabitWidgetItem(
     val id: String,
     val name: String,
@@ -83,7 +84,7 @@ class ToggleHabitActionCallback : ActionCallback {
 class HabitWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HabitWidget()
 }
-
+@Suppress("RestrictedApi")
 class HabitWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {

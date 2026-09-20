@@ -37,15 +37,18 @@ interface OccurrenceDao {
 
 @Dao
 interface GoalDao {
-    @Query("SELECT * FROM goals WHERE archived = 0 ORDER BY startEpochDay DESC")
+    @Query("SELECT * FROM goals WHERE archived = 0 ORDER BY rowid DESC")
     fun observeActive(): Flow<List<GoalEntity>>
-    @Query("SELECT * FROM goals") suspend fun all(): List<GoalEntity>
-    @Upsert suspend fun upsert(item: GoalEntity)
-    @Upsert suspend fun upsertAll(items: List<GoalEntity>)
-    @Query("DELETE FROM goals") suspend fun clear()
-
-    @Query("DELETE FROM goals WHERE id = :id") suspend fun delete(id: String)
-
+    @Query("SELECT * FROM goals ORDER BY rowid DESC")
+    suspend fun all(): List<GoalEntity>
+    @Upsert
+    suspend fun upsert(item: GoalEntity)
+    @Upsert
+    suspend fun upsertAll(items: List<GoalEntity>)
+    @Query("DELETE FROM goals")
+    suspend fun clear()
+    @Query("DELETE FROM goals WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao
@@ -72,7 +75,7 @@ interface UserStatsDao {
 
 @Database(
     entities = [HabitEntity::class, OccurrenceEntity::class, GoalEntity::class, ReminderEntity::class, UserStatsEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class HabitFlowDatabase : RoomDatabase() {
