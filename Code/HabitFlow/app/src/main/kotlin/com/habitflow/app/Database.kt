@@ -13,10 +13,13 @@ import kotlinx.coroutines.flow.Flow
 interface HabitDao {
     @Query("SELECT * FROM habits WHERE archived = 0 ORDER BY createdAt DESC")
     fun observeActive(): Flow<List<HabitEntity>>
+    @Query("SELECT * FROM habits WHERE archived = 1 ORDER BY createdAt DESC")
+    fun observeArchived(): Flow<List<HabitEntity>>
     @Query("SELECT * FROM habits") suspend fun all(): List<HabitEntity>
     @Upsert suspend fun upsert(item: HabitEntity)
     @Upsert suspend fun upsertAll(items: List<HabitEntity>)
     @Query("UPDATE habits SET archived = 1 WHERE id = :id") suspend fun archive(id: String)
+    @Query("UPDATE habits SET archived = 0 WHERE id = :id") suspend fun unarchive(id: String)
     @Query("DELETE FROM habits WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM habits") suspend fun clear()
 }
@@ -34,19 +37,29 @@ interface OccurrenceDao {
 
 @Dao
 interface GoalDao {
-    @Query("SELECT * FROM goals WHERE archived = 0 ORDER BY startEpochDay DESC")
+    @Query("SELECT * FROM goals WHERE archived = 0 ORDER BY rowid DESC")
     fun observeActive(): Flow<List<GoalEntity>>
-    @Query("SELECT * FROM goals") suspend fun all(): List<GoalEntity>
-    @Upsert suspend fun upsert(item: GoalEntity)
-    @Upsert suspend fun upsertAll(items: List<GoalEntity>)
-    @Query("DELETE FROM goals") suspend fun clear()
+    @Query("SELECT * FROM goals ORDER BY rowid DESC")
+    suspend fun all(): List<GoalEntity>
+    @Upsert
+    suspend fun upsert(item: GoalEntity)
+    @Upsert
+    suspend fun upsertAll(items: List<GoalEntity>)
+    @Query("DELETE FROM goals")
+    suspend fun clear()
+    @Query("DELETE FROM goals WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao
 interface ReminderDao {
     @Query("SELECT * FROM reminders") suspend fun all(): List<ReminderEntity>
+    @Query("SELECT * FROM reminders WHERE enabled = 1") fun observeAllEnabled(): Flow<List<ReminderEntity>>
+    @Query("SELECT * FROM reminders WHERE habitId = :habitId") fun observeByHabit(habitId: String): Flow<List<ReminderEntity>>
+    @Query("SELECT * FROM reminders WHERE id = :id") suspend fun getById(id: String): ReminderEntity?
     @Upsert suspend fun upsert(item: ReminderEntity)
     @Upsert suspend fun upsertAll(items: List<ReminderEntity>)
+    @Query("DELETE FROM reminders WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM reminders") suspend fun clear()
 }
 
@@ -62,7 +75,7 @@ interface UserStatsDao {
 
 @Database(
     entities = [HabitEntity::class, OccurrenceEntity::class, GoalEntity::class, ReminderEntity::class, UserStatsEntity::class],
-    version = 4,
+    version = 8,
     exportSchema = false,
 )
 abstract class HabitFlowDatabase : RoomDatabase() {

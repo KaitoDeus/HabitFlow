@@ -10,6 +10,7 @@ Desktop.ini
 # ==========================================
 .idea/
 .vscode/
+.artifacts/
 *.iml
 !.idea/copyright/
 !.idea/codeStyles/
@@ -20,13 +21,18 @@ Desktop.ini
 # Android & Gradle Build Artifacts
 # ==========================================
 .gradle/
-/build/
-app/build/
-/captures/
+**/build/
+build/
+captures/
 .externalNativeBuild/
 .cxx/
 .kotlin/
 **/build/generated/ksp/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
 
 # Android SDK Local Configuration (MUST IGNORE)
 local.properties
